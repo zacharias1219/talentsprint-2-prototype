@@ -42,6 +42,8 @@ venv.bak/
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -62,6 +64,12 @@ data/cache/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/cache/.gitkeep
+
+# User data (sensitive - should never be committed)
+data/user_sessions/
+data/users/
+data/portfolio_history/
+data/embeddings/
 
 # Logs
 logs/
@@ -96,8 +104,11 @@ Thumbs.db
 secrets/
 *.key
 *.pem
+.encryption_key
+encryption_key
 
 # Large files
 *.zip
 *.tar.gz
 *.rar
+notebooks/

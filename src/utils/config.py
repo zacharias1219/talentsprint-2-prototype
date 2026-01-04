@@ -80,7 +80,11 @@ class Config:
                     var_name = var_expr.strip()
                     value = os.getenv(var_name)
                     if value is None:
-                        raise ValueError(f"Environment variable {var_name} not set")
+                        # Return empty string for optional variables (like Pinecone)
+                        # Only raise error for critical variables
+                        if var_name in ["DATABASE_URL", "ALPHA_VANTAGE_API_KEY"]:
+                            raise ValueError(f"Environment variable {var_name} not set")
+                        return ""  # Return empty string for optional variables
                     return value
             return config
         else:

@@ -38,8 +38,8 @@ alpha_vantage:
 
 # Pinecone Configuration
 pinecone:
-  api_key: "${PINECONE_API_KEY}"
-  environment: "${PINECONE_ENVIRONMENT}"
+  api_key: "${PINECONE_API_KEY:}"
+  environment: "${PINECONE_ENVIRONMENT:}"
   index_name: "${PINECONE_INDEX_NAME:financial-advisor}"
   dimension: 384
   metric: "cosine"

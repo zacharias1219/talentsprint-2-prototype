@@ -1,0 +1,11 @@
+{
+  "model_path": "./models/fine_tuned/financial_advisor",
+  "base_model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+  "num_samples": 100,
+  "metrics": {
+    "bleu": 0.006830537070915425,
+    "rouge1": 0.25329428943439725,
+    "rouge2": 0.030881645921259245,
+    "rougeL": 0.12645186848490345
+  }
+}

@@ -90,3 +90,93 @@ def get_logger(name: str) -> logging.Logger:
     """
     return setup_logger(name)
 
+
+def log_api_call(
+    logger: logging.Logger,
+    endpoint: str,
+    user_id: str,
+    duration: float,
+    status_code: int = 200,
+    error: Optional[str] = None,
+) -> None:
+    """
+    Log API call with structured information.
+
+    Args:
+        logger: Logger instance.
+        endpoint: API endpoint called.
+        user_id: User identifier.
+        duration: Request duration in seconds.
+        status_code: HTTP status code.
+        error: Error message if any.
+    """
+    log_data = {
+        "endpoint": endpoint,
+        "user_id": user_id,
+        "duration_seconds": duration,
+        "status_code": status_code,
+    }
+    
+    if error:
+        log_data["error"] = error
+        logger.error(f"API Call: {log_data}")
+    else:
+        logger.info(f"API Call: {log_data}")
+
+
+def log_model_inference(
+    logger: logging.Logger,
+    user_id: str,
+    query_length: int,
+    response_length: int,
+    inference_time: float,
+    model_name: str = "gpt2-finetuned",
+) -> None:
+    """
+    Log model inference metrics.
+
+    Args:
+        logger: Logger instance.
+        user_id: User identifier.
+        query_length: Length of input query.
+        response_length: Length of generated response.
+        inference_time: Inference time in seconds.
+        model_name: Model name.
+    """
+    log_data = {
+        "event": "model_inference",
+        "user_id": user_id,
+        "query_length": query_length,
+        "response_length": response_length,
+        "inference_time_seconds": inference_time,
+        "model": model_name,
+        "tokens_per_second": response_length / inference_time if inference_time > 0 else 0,
+    }
+    
+    logger.info(f"Model Inference: {log_data}")
+
+
+def log_api_key_usage(
+    logger: logging.Logger,
+    service: str,
+    endpoint: str,
+    remaining_calls: Optional[int] = None,
+) -> None:
+    """
+    Log API key usage for external services (e.g., Alpha Vantage).
+
+    Args:
+        logger: Logger instance.
+        service: Service name (e.g., "alpha_vantage").
+        endpoint: API endpoint called.
+        remaining_calls: Remaining API calls if available.
+    """
+    log_data = {
+        "service": service,
+        "endpoint": endpoint,
+    }
+    
+    if remaining_calls is not None:
+        log_data["remaining_calls"] = remaining_calls
+    
+    logger.info(f"API Key Usage: {log_data}")
