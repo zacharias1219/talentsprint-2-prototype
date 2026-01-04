@@ -21,6 +21,4 @@ serverAddress = "localhost"
 [runner]
 fastReruns = true
 magicEnabled = true
-installTracer = false
-fixMatplotlib = true
 

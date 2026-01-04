@@ -158,11 +158,17 @@ def list_saved_sessions() -> list:
 @st.cache_resource
 def load_inference_model():
     """Load the fine-tuned model (cached to avoid reloading)."""
-    model_path = project_root / "models" / "fine_tuned" / "financial_advisor"
-    return FinancialAdvisorInference(
-        model_path=str(model_path),
-        base_model="TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-    )
+    try:
+        model_path = project_root / "models" / "fine_tuned" / "financial_advisor"
+        return FinancialAdvisorInference(
+            model_path=str(model_path),
+            base_model="TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+        )
+    except Exception as e:
+        # Graceful fallback - return None if model can't load
+        # This prevents crashes in deployment environments
+        st.warning(f"⚠️ Model could not be loaded: {str(e)[:100]}. Some features may be limited.")
+        return None
 
 
 @st.cache_resource
@@ -182,14 +188,9 @@ def init_session_state():
     if "current_user" not in st.session_state:
         st.session_state.current_user = None
     
-    # Only load heavy resources if authenticated
-    if st.session_state.authenticated:
-        if "advisor" not in st.session_state:
-            with st.spinner("Loading AI model..."):
-                st.session_state.advisor = load_inference_model()
-        
-        if "engine" not in st.session_state:
-            st.session_state.engine = load_personalization_engine()
+    # Only load heavy resources if authenticated and when needed
+    # Defer model loading until actually needed (lazy loading)
+    # This prevents crashes on startup in deployment environments
     
     if "session_id" not in st.session_state:
         st.session_state.session_id = None
@@ -445,6 +446,40 @@ def render_chat_tab():
     prompt = st.session_state.pending_prompt
     st.session_state.pending_prompt = None
     
+    # Lazy load model only when needed (not on startup)
+    if "advisor" not in st.session_state:
+        try:
+            with st.spinner("Loading AI model (first time only)..."):
+                st.session_state.advisor = load_inference_model()
+        except Exception as e:
+            st.error(f"⚠️ Could not load AI model: {str(e)[:200]}")
+            st.info("You can still use other features like Portfolio Tracking and Goal Calculators.")
+            st.session_state.advisor = None
+    
+    if "engine" not in st.session_state:
+        try:
+            st.session_state.engine = load_personalization_engine()
+        except Exception as e:
+            st.warning(f"⚠️ Could not load personalization engine: {str(e)[:200]}")
+            st.session_state.engine = None
+    
+    # Lazy load model only when needed (not on startup to prevent crashes)
+    if "advisor" not in st.session_state:
+        try:
+            with st.spinner("Loading AI model (first time only)..."):
+                st.session_state.advisor = load_inference_model()
+        except Exception as e:
+            st.warning(f"⚠️ Could not load AI model: {str(e)[:200]}")
+            st.info("💡 You can still use other features like Portfolio Tracking and Goal Calculators.")
+            st.session_state.advisor = None
+    
+    if "engine" not in st.session_state:
+        try:
+            st.session_state.engine = load_personalization_engine()
+        except Exception as e:
+            st.warning(f"⚠️ Could not load personalization engine: {str(e)[:200]}")
+            st.session_state.engine = None
+    
     # Chat input
     if not prompt:
         prompt = st.chat_input("Ask me about your finances...")
@@ -489,13 +524,26 @@ def render_chat_tab():
                 if stock_context:
                     context = context + "\n" + stock_context
                 
+                # Check if advisor is loaded
+                if st.session_state.advisor is None:
+                    placeholder.empty()
+                    st.error("⚠️ AI model is not available. The model may not be installed or there was an error loading it.")
+                    st.info("💡 You can still use Portfolio Tracking, Goal Calculators, and other features.")
+                    return
+                
                 placeholder.markdown("🤖 *Generating personalized advice...*")
-                response_text = st.session_state.advisor.generate_response_with_context(
-                    context,
-                    prompt,
-                    max_length=300,
-                    temperature=0.7
-                )
+                try:
+                    response_text = st.session_state.advisor.generate_response_with_context(
+                        context,
+                        prompt,
+                        max_length=300,
+                        temperature=0.7
+                    )
+                except Exception as e:
+                    placeholder.empty()
+                    st.error(f"⚠️ Error generating response: {str(e)[:200]}")
+                    st.info("💡 Please try again or use other features.")
+                    return
                 
                 placeholder.empty()
                 
