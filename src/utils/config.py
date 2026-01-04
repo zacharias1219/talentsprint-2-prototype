@@ -1,15 +1,28 @@
 """
 Configuration management module.
 
-Loads and manages application configuration from YAML files and environment variables.
+Loads and manages application configuration from TOML/YAML files and environment variables.
 """
 
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-import yaml
 from dotenv import load_dotenv
+
+# Try to import TOML, fallback to YAML
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    try:
+        import tomli as tomllib  # Python < 3.11
+    except ImportError:
+        tomllib = None
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 
 class Config:
@@ -31,29 +44,46 @@ class Config:
         else:
             self.config_dir = Path(__file__).parent.parent.parent / "config"
 
-        # Load configuration files
-        self.app_config = self._load_yaml("config.yaml")
-        self.model_config = self._load_yaml("model_config.yaml")
+        # Load configuration files (try TOML first, then YAML)
+        self.app_config = self._load_config("config.toml", "config.yaml")
+        try:
+            self.model_config = self._load_config("model_config.toml", "model_config.yaml")
+        except:
+            self.model_config = {}
 
-    def _load_yaml(self, filename: str) -> Dict[str, Any]:
+    def _load_config(self, toml_filename: str, yaml_filename: str) -> Dict[str, Any]:
         """
-        Load YAML configuration file.
+        Load configuration file (TOML preferred, YAML fallback).
 
         Args:
-            filename: Name of the YAML file to load.
+            toml_filename: Name of the TOML file to try first.
+            yaml_filename: Name of the YAML file as fallback.
 
         Returns:
             Dictionary containing configuration values.
         """
-        file_path = self.config_dir / filename
-        if not file_path.exists():
-            raise FileNotFoundError(f"Configuration file not found: {file_path}")
-
-        with open(file_path, "r") as f:
-            config = yaml.safe_load(f)
-
-        # Replace environment variable placeholders
-        return self._replace_env_vars(config)
+        # Try TOML first
+        toml_path = self.config_dir.parent / toml_filename
+        if toml_path.exists() and tomllib:
+            try:
+                with open(toml_path, "rb") as f:
+                    config = tomllib.load(f)
+                return self._replace_env_vars(config)
+            except Exception:
+                pass  # Fall back to YAML
+        
+        # Try YAML fallback
+        yaml_path = self.config_dir / yaml_filename
+        if yaml_path.exists() and yaml:
+            try:
+                with open(yaml_path, "r") as f:
+                    config = yaml.safe_load(f)
+                return self._replace_env_vars(config)
+            except Exception:
+                pass
+        
+        # If neither exists, return empty dict (don't crash)
+        return {}
 
     def _replace_env_vars(self, config: Any) -> Any:
         """
